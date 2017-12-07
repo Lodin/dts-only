@@ -1,0 +1,37 @@
+{
+  "name": "dts-only",
+  "version": "0.1.0",
+  "description": "Command-line wrapper for typescript compiler to produce declarations only",
+  "main": "index.js",
+  "scripts": {
+    "build": "babel index.js --out-dir dist",
+    "test": "npm run test:single -- --watchAll",
+    "test:single": "jest -c jest.config.js",
+    "test:cover": "npm run test:single -- --coverage"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lodin/dts-only.git"
+  },
+  "keywords": [
+    "typescript",
+    "declaration",
+    "dts",
+    ".d.ts",
+    "generator"
+  ],
+  "author": "Vlad Rindevich <rindevich.vs@gmail.com> (https://github.com/Lodin)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Lodin/dts-only/issues"
+  },
+  "homepage": "https://github.com/Lodin/dts-only#readme",
+  "dependencies": {
+    "glob": "^7.1.2",
+    "minimist": "^1.2.0",
+    "typescript": "^2.6.2"
+  },
+  "devDependencies": {
+    "jest": "^21.2.1"
+  }
+}
