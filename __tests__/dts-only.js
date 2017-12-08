@@ -107,4 +107,32 @@ describe('dts-only', function () {
       });
     });
   });
+
+  it('should compile files defined in tsconfig "files" section', function (done) {
+    programm({
+      project: '__tests__/sample/files/tsconfig.json',
+      outDir: '__tests__/compiled/files'
+    }, function () {
+      parallel([
+        function (check) {
+          fs.readFile(r('compiled/files/code1.d.ts'), 'utf8', function (err, source) {
+            if (err) throw err;
+
+            expect(source.replace(eol, '')).toEqual(code1);
+
+            check();
+          });
+        },
+        function (check) {
+          fs.exists(r('compiled/files/code2.d.ts'), function (err, result) {
+            expect(result).not.toBeTruthy();
+
+            check();
+          });
+        }
+      ], function () {
+        done();
+      });
+    });
+  });
 });
