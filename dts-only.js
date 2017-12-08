@@ -4,12 +4,12 @@ var tsc = require('typescript');
 
 var cwd = process.cwd();
 
-function globalize(includes, callback) {
+function globalize(paths, callback) {
   var result = [];
-  var count = includes.length - 1;
+  var count = paths.length - 1;
 
-  for (var i = 0, len = includes.length; i < len; i++) {
-    var p = includes[i];
+  for (var i = 0, len = paths.length; i < len; i++) {
+    var p = paths[i];
 
     glob(p, function processPaths(err, paths) {
       if (err) {
@@ -29,7 +29,7 @@ function globalize(includes, callback) {
   }
 }
 
-function prepareIncludes(includes, tsconfigDir) {
+function preparePaths(includes, tsconfigDir) {
   return includes.map(function (i) {
     return path.relative(cwd, path.resolve(tsconfigDir, i));
   });
@@ -44,7 +44,7 @@ function dtsOnly(options, callback) {
   var tsconfigPath = path.resolve(cwd, project);
   var tsconfig = require(tsconfigPath);
 
-  if (!tsconfig.include) {
+  if (!tsconfig.include && !tsconfig.files) {
     throw new Error('No "include" section found in tsconfig.json');
   }
 
@@ -62,17 +62,32 @@ function dtsOnly(options, callback) {
     compilerOptions.target = target;
   }
 
+  var tsconfigDir = path.dirname(tsconfigPath);
+
   globalize(
-    prepareIncludes(tsconfig.include, path.dirname(tsconfigPath)),
-    function compile(err, paths) {
+    preparePaths(tsconfig.include, tsconfigDir),
+    function globalizeExcludes(err, includePaths) {
       if (err) {
         throw err;
       }
 
-      var program = tsc.createProgram(paths, compilerOptions);
-      program.emit(undefined, undefined, undefined, true);
+      globalize(
+        preparePaths(tsconfig.exclude, tsconfigDir),
+        function compile(err, excludePaths) {
+          if (err) {
+            throw err;
+          }
 
-      callback();
+          var paths = includePaths.filter(function (p) {
+            return excludePaths.indexOf(p) < 0
+          });
+
+          var program = tsc.createProgram(paths, compilerOptions);
+          program.emit(undefined, undefined, undefined, true);
+
+          callback();
+        }
+      )
     }
   );
 }
