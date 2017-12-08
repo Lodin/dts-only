@@ -8,20 +8,16 @@ function r(way) {
   return path.resolve(__dirname, way);
 }
 
-function asyncReadFile(path, check, notDone, done, load) {
-  fs.readFile(path, 'utf8', function (err, source) {
-    if (err) {
-      throw err;
-    }
+function createParallelCounter(count, done) {
+  var parallelCount = count - 1;
 
-    load(source.replace(eol, ''));
-
-    if (check()) {
+  return function checkParallel () {
+    if (parallelCount === 0) {
       done();
     } else {
-      notDone();
+      parallelCount--;
     }
-  });
+  }
 }
 
 describe('dts-only', function () {
@@ -29,17 +25,20 @@ describe('dts-only', function () {
   var code2;
 
   beforeAll(function (done) {
-    var isAnotherCompleted = false;
+    var check = createParallelCounter(2, done);
 
-    var check = function () { return isAnotherCompleted; };
-    var notDone = function () { isAnotherCompleted = true; };
+    fs.readFile(r('fixtures/code1.d.ts'), 'utf8', function (err, source) {
+      if (err) throw err;
+      code1 = source.replace(eol, '');
 
-    asyncReadFile(r('fixtures/code1.d.ts'), check, notDone, done, function (source) {
-      code1 = source;
+      check();
     });
 
-    asyncReadFile(r('fixtures/code2.d.ts'), check, notDone, done, function (source) {
-      code2 = source;
+    fs.readFile(r('fixtures/code2.d.ts'), 'utf8', function (err, source) {
+      if (err) throw err;
+      code2 = source.replace(eol, '');
+
+      check();
     });
   });
 
@@ -53,29 +52,54 @@ describe('dts-only', function () {
           throw err;
         }
 
-        expect(source.replace(eol, ''))
-          .toEqual(code1);
+        expect(source.replace(eol, '')).toEqual(code1);
         done();
       });
     });
   });
 
   it('should compile multiple d.ts mentioned in tsconfig "include" section', function (done) {
-    var isAnotherCompleted = false;
-
-    var check = function () { return isAnotherCompleted; };
-    var notDone = function () { isAnotherCompleted = true; };
+    var check = createParallelCounter(2, done);
 
     programm({
       project: '__tests__/sample/multiple-include/tsconfig.json',
       outDir: '__tests__/compiled/multiple-include'
     }, function () {
-      asyncReadFile(r('compiled/multiple-include/code1.d.ts'), check, notDone, done, function (source) {
+      fs.readFile(r('compiled/multiple-include/code1.d.ts'), 'utf8', function (err, source) {
+        if (err) throw err;
         expect(source.replace(eol, '')).toEqual(code1);
+
+        check();
       });
 
-      asyncReadFile(r('compiled/multiple-include/code2.d.ts'), check, notDone, done, function (source) {
+      fs.readFile(r('compiled/multiple-include/code2.d.ts'), 'utf8', function (err, source) {
+        if (err) throw err;
         expect(source.replace(eol, '')).toEqual(code2);
+
+        check();
+      });
+    });
+  });
+
+  it('should exclude paths from sending to compile basing on tsconfig "exclude" section', function (done) {
+    programm({
+      project: '__tests__/sample/exclude/tsconfig.json',
+      outDir: '__tests__/compiled/exclude'
+    }, function () {
+      var check = createParallelCounter(2, done);
+
+      fs.readFile(r('compiled/exclude/code2.d.ts'), 'utf8', function (err, source) {
+        if (err) throw err;
+
+        expect(source.replace(eol, '')).toEqual(code2);
+
+        check();
+      });
+
+      fs.exists(r('compiled/exclude/excludes/code1.d.ts'), function (err, result) {
+        expect(result).not.toBeTruthy();
+
+        check();
       });
     });
   });
