@@ -4,7 +4,8 @@ var cwd = process.cwd();
 
 module.exports = {
   collectCoverageFrom: [
-    'dts-only.js'
+    'lib/dts-only.js',
+    'lib/parallel.js'
   ],
   mapCoverage: true,
   moduleFileExtensions: [

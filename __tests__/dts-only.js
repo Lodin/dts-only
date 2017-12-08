@@ -1,6 +1,7 @@
 var fs = require('fs');
 var path = require('path');
-var programm = require('../dts-only');
+var programm = require('../lib/dts-only');
+var parallel = require('../lib/parallel');
 
 var eol = /\r?\n?/g;
 
@@ -8,38 +9,31 @@ function r(way) {
   return path.resolve(__dirname, way);
 }
 
-function createParallelCounter(count, done) {
-  var parallelCount = count - 1;
-
-  return function checkParallel () {
-    if (parallelCount === 0) {
-      done();
-    } else {
-      parallelCount--;
-    }
-  }
-}
-
 describe('dts-only', function () {
   var code1;
   var code2;
 
   beforeAll(function (done) {
-    var check = createParallelCounter(2, done);
+    parallel([
+      function (check) {
+        fs.readFile(r('fixtures/code1.d.ts'), 'utf8', function (err, source) {
+          if (err) throw err;
+          code1 = source.replace(eol, '');
 
-    fs.readFile(r('fixtures/code1.d.ts'), 'utf8', function (err, source) {
-      if (err) throw err;
-      code1 = source.replace(eol, '');
+          check();
+        });
+      },
+      function (check) {
+        fs.readFile(r('fixtures/code2.d.ts'), 'utf8', function (err, source) {
+          if (err) throw err;
+          code2 = source.replace(eol, '');
 
-      check();
-    });
-
-    fs.readFile(r('fixtures/code2.d.ts'), 'utf8', function (err, source) {
-      if (err) throw err;
-      code2 = source.replace(eol, '');
-
-      check();
-    });
+          check();
+        });
+      }
+    ], function() {
+      done();
+    })
   });
 
   it('should compile only d.ts files from typescript source', function (done) {
@@ -59,24 +53,29 @@ describe('dts-only', function () {
   });
 
   it('should compile multiple d.ts mentioned in tsconfig "include" section', function (done) {
-    var check = createParallelCounter(2, done);
-
     programm({
       project: '__tests__/sample/multiple-include/tsconfig.json',
       outDir: '__tests__/compiled/multiple-include'
     }, function () {
-      fs.readFile(r('compiled/multiple-include/code1.d.ts'), 'utf8', function (err, source) {
-        if (err) throw err;
-        expect(source.replace(eol, '')).toEqual(code1);
+      parallel([
+        function (check) {
+          fs.readFile(r('compiled/multiple-include/code1.d.ts'), 'utf8', function (err, source) {
+            if (err) throw err;
+            expect(source.replace(eol, '')).toEqual(code1);
 
-        check();
-      });
+            check();
+          });
+        },
+        function (check) {
+          fs.readFile(r('compiled/multiple-include/code2.d.ts'), 'utf8', function (err, source) {
+            if (err) throw err;
+            expect(source.replace(eol, '')).toEqual(code2);
 
-      fs.readFile(r('compiled/multiple-include/code2.d.ts'), 'utf8', function (err, source) {
-        if (err) throw err;
-        expect(source.replace(eol, '')).toEqual(code2);
-
-        check();
+            check();
+          });
+        }
+      ], function () {
+        done();
       });
     });
   });
@@ -86,20 +85,25 @@ describe('dts-only', function () {
       project: '__tests__/sample/exclude/tsconfig.json',
       outDir: '__tests__/compiled/exclude'
     }, function () {
-      var check = createParallelCounter(2, done);
+      parallel([
+        function (check) {
+          fs.readFile(r('compiled/exclude/code2.d.ts'), 'utf8', function (err, source) {
+            if (err) throw err;
 
-      fs.readFile(r('compiled/exclude/code2.d.ts'), 'utf8', function (err, source) {
-        if (err) throw err;
+            expect(source.replace(eol, '')).toEqual(code2);
 
-        expect(source.replace(eol, '')).toEqual(code2);
+            check();
+          });
+        },
+        function (check) {
+          fs.exists(r('compiled/exclude/excludes/code1.d.ts'), function (err, result) {
+            expect(result).not.toBeTruthy();
 
-        check();
-      });
-
-      fs.exists(r('compiled/exclude/excludes/code1.d.ts'), function (err, result) {
-        expect(result).not.toBeTruthy();
-
-        check();
+            check();
+          });
+        }
+      ], function () {
+        done();
       });
     });
   });
