@@ -13,22 +13,7 @@ $ npm install dts-only
 ## Command-line options
 * `-c`, `--compiler` - prints current compiler version
 * `-h`, `--help` - prints usage information
-* `-m`, `--module` - specifies module resolution for typescript compiler:
-  * `none`,
-  * `commonjs`,
-  * `amd`,
-  * `system`,
-  * `umd`,
-  * `es2015` (default),
-  * `esnext`
 * `--outDir` - specifies directory for typescript compiler output
 * `-p`, `--project` - path to `tsconfig.json` file.
-* `-t`, `--target` - specifies ECMAScript version for typescript compiler:
-  * `es3`,
-  * `es5`,
-  * `es2015` (default),
-  * `es2016`,
-  * `es2017`, 
-  * `esnext`
 * `-v`, `--version` - prints package version
  
