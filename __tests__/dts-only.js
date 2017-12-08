@@ -4,67 +4,79 @@ var programm = require('../dts-only');
 
 var eol = /\r?\n?/g;
 
-function compareCompiledAndFixture(compiledPath, fixturePath, callback) {
-  var fullCompiledPath = path.resolve(__dirname, compiledPath);
-  var fullFixturePath = path.resolve(__dirname, fixturePath);
+function r(way) {
+  return path.resolve(__dirname, way);
+}
 
-  fs.readFile(fullCompiledPath, 'utf8', function (err, compiled) {
+function asyncReadFile(path, check, notDone, done, load) {
+  fs.readFile(path, 'utf8', function (err, source) {
     if (err) {
       throw err;
     }
 
-    var compiledWithoutEol = compiled.replace(eol, '');
+    load(source.replace(eol, ''));
 
-    fs.readFile(fullFixturePath, 'utf8', function (err, fixture) {
-      if (err) {
-        throw err;
-      }
-
-      var fixtureWithoutEol = fixture.replace(eol, '');
-
-      expect(compiledWithoutEol).toEqual(fixtureWithoutEol);
-
-      if (callback) {
-        callback();
-      }
-    });
+    if (check()) {
+      done();
+    } else {
+      notDone();
+    }
   });
 }
 
 describe('dts-only', function () {
+  var code1;
+  var code2;
+
+  beforeAll(function (done) {
+    var isAnotherCompleted = false;
+
+    var check = function () { return isAnotherCompleted; };
+    var notDone = function () { isAnotherCompleted = true; };
+
+    asyncReadFile(r('fixtures/code1.d.ts'), check, notDone, done, function (source) {
+      code1 = source;
+    });
+
+    asyncReadFile(r('fixtures/code2.d.ts'), check, notDone, done, function (source) {
+      code2 = source;
+    });
+  });
+
   it('should compile only d.ts files from typescript source', function (done) {
     programm({
       project: '__tests__/sample/default/tsconfig.json',
       outDir: '__tests__/compiled/default'
     }, function () {
-      compareCompiledAndFixture(
-        'compiled/default/code.d.ts',
-        'fixtures/default/code.d.ts',
-        done
-      );
+      fs.readFile(r('compiled/default/code1.d.ts'), 'utf8', function (err, source) {
+        if (err) {
+          throw err;
+        }
+
+        expect(source.replace(eol, ''))
+          .toEqual(code1);
+        done();
+      });
     });
   });
 
   it('should compile multiple d.ts mentioned in tsconfig "include" section', function (done) {
-    var testSecond = function () {
-      compareCompiledAndFixture(
-        'compiled/multiple-include/code2.d.ts',
-        'fixtures/multiple-include/code2.d.ts',
-        done
-      );
-    };
+    var isAnotherCompleted = false;
 
-    var testFirst = function () {
-      compareCompiledAndFixture(
-        'compiled/multiple-include/code1.d.ts',
-        'fixtures/multiple-include/code1.d.ts',
-        testSecond
-      );
-    };
+    var check = function () { return isAnotherCompleted; };
+    var notDone = function () { isAnotherCompleted = true; };
 
     programm({
       project: '__tests__/sample/multiple-include/tsconfig.json',
       outDir: '__tests__/compiled/multiple-include'
-    }, testFirst);
+    }, function () {
+      asyncReadFile(r('compiled/multiple-include/code1.d.ts'), check, notDone, done, function (source) {
+        expect(source.replace(eol, '')).toEqual(code1);
+      });
+
+      asyncReadFile(r('compiled/multiple-include/code2.d.ts'), check, notDone, done, function (source) {
+        expect(source.replace(eol, '')).toEqual(code2);
+      });
+    });
   });
 });
