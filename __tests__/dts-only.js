@@ -89,7 +89,6 @@ describe('dts-only', function () {
         function (check) {
           fs.readFile(r('compiled/exclude/code2.d.ts'), 'utf8', function (err, source) {
             if (err) throw err;
-
             expect(source.replace(eol, '')).toEqual(code2);
 
             check();
@@ -97,6 +96,7 @@ describe('dts-only', function () {
         },
         function (check) {
           fs.exists(r('compiled/exclude/excludes/code1.d.ts'), function (err, result) {
+            if (err) throw err;
             expect(result).not.toBeTruthy();
 
             check();
@@ -117,7 +117,6 @@ describe('dts-only', function () {
         function (check) {
           fs.readFile(r('compiled/files/code1.d.ts'), 'utf8', function (err, source) {
             if (err) throw err;
-
             expect(source.replace(eol, '')).toEqual(code1);
 
             check();
@@ -126,6 +125,35 @@ describe('dts-only', function () {
         function (check) {
           fs.exists(r('compiled/files/code2.d.ts'), function (err, result) {
             expect(result).not.toBeTruthy();
+
+            check();
+          });
+        }
+      ], function () {
+        done();
+      });
+    });
+  });
+
+  it('should compile every ts or tsx file in cwd if no "include" or "files" is specified', function (done) {
+    programm({
+      project: '__tests__/sample/no-include-or-files/tsconfig.json',
+      outDir: '__tests__/compiled/no-include-or-files'
+    }, function () {
+      parallel([
+        function (check) {
+          fs.readFile(r('compiled/no-include-or-files/code1.d.ts'), 'utf8', function (err, source) {
+            if (err) throw err;
+            expect(source.replace(eol, ''))
+              .toEqual(code1);
+
+            check();
+          });
+        },
+        function (check) {
+          fs.readFile(r('compiled/no-include-or-files/src/code2.d.ts'), 'utf8', function (err, source) {
+            if (err) throw err;
+            expect(source.replace(eol, '')).toEqual(code2);
 
             check();
           });
