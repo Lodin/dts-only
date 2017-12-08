@@ -4,29 +4,59 @@ var tsc = require('typescript');
 
 var cwd = process.cwd();
 
-function globalize(paths, callback) {
-  var result = [];
-  var count = paths.length - 1;
+function parallel(fns, callback) {
+  var len = fns.length;
+  var count = len;
+  var result = new Array(len);
 
-  for (var i = 0, len = paths.length; i < len; i++) {
-    var p = paths[i];
-
-    glob(p, function processPaths(err, paths) {
-      if (err) {
-        callback(err);
-      }
-
-      for (var j = 0, len2 = paths.length; j < len2; j++) {
-        result.push(paths[j]);
-      }
+  var loop = function loop(i) {
+    var check = function checkParallel(data) {
+      count--;
+      result[i] = data;
 
       if (count === 0) {
-        callback(undefined, result);
-      } else {
-        count--;
+        callback(result);
       }
-    });
+    };
+
+    fns[i](check);
+  };
+
+  for (var i = 0; i < len; i++) {
+    loop(i);
   }
+}
+
+function globalize(paths, callback) {
+  var result = [];
+  var len = paths.length;
+
+  var parallels = new Array(len);
+  var loop = function (i) {
+    parallels[i] = function (check) {
+      glob(paths[i], function processPaths(err, globalizedPaths) {
+        if (err) {
+          callback(err);
+        }
+
+        check(globalizedPaths);
+      });
+    }
+  };
+
+  for (var i = 0; i < len; i++) {
+    loop(i);
+  }
+
+  parallel(parallels, function (res) {
+    for (var i = 0, leni = res.length; i < leni; i++) {
+      for (var j = 0, lenj = res[i].length; j < lenj; j++) {
+        result.push(res[i][j]);
+      }
+    }
+
+    callback(undefined, result);
+  });
 }
 
 function preparePaths(includes, tsconfigDir) {
@@ -44,7 +74,7 @@ function dtsOnly(options, callback) {
   var tsconfigPath = path.resolve(cwd, project);
   var tsconfig = require(tsconfigPath);
 
-  if (!tsconfig.include && !tsconfig.files) {
+  if (!tsconfig.include) {
     throw new Error('No "include" section found in tsconfig.json');
   }
 
@@ -64,32 +94,38 @@ function dtsOnly(options, callback) {
 
   var tsconfigDir = path.dirname(tsconfigPath);
 
-  globalize(
-    preparePaths(tsconfig.include, tsconfigDir),
-    function globalizeExcludes(err, includePaths) {
-      if (err) {
-        throw err;
-      }
-
+  parallel([
+    function (check) {
+      globalize(
+        preparePaths(tsconfig.include, tsconfigDir),
+        function (err, paths) {
+          if (err) throw err;
+          check(paths);
+        }
+      );
+    },
+    function (check) {
       globalize(
         preparePaths(tsconfig.exclude, tsconfigDir),
-        function compile(err, excludePaths) {
-          if (err) {
-            throw err;
-          }
-
-          var paths = includePaths.filter(function (p) {
-            return excludePaths.indexOf(p) < 0
-          });
-
-          var program = tsc.createProgram(paths, compilerOptions);
-          program.emit(undefined, undefined, undefined, true);
-
-          callback();
+        function (err, paths) {
+          if (err) throw err;
+          check(paths);
         }
-      )
+      );
     }
-  );
+  ], function compile(result) {
+    var includePaths = result[0];
+    var excludePaths = result[1];
+
+    var paths = includePaths.filter(function (p) {
+      return excludePaths.indexOf(p) < 0
+    });
+
+    var program = tsc.createProgram(paths, compilerOptions);
+    program.emit(undefined, undefined, undefined, true);
+
+    callback();
+  });
 }
 
 module.exports = dtsOnly;
