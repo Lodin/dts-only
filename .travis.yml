@@ -7,6 +7,6 @@ node_js:
 cache:
   directories:
   - $HOME/.npm
-script: npm run test:cover -- --timeout 15000
+script: npm run test:cover
 after_success:
   - ./node_modules/.bin/codecov -e TRAVIS_NODE_VERSION -f coverage/coverage-final.json
