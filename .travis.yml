@@ -1,0 +1,12 @@
+language: node_js
+dist: trusty
+node_js:
+  - '8'
+  - '6'
+  - '4'
+cache:
+  directories:
+  - $HOME/.npm
+script: npm run test:cover -- --timeout 15000
+after_success:
+  - cat coverage/lcov/lcov.info | ./node_modules/.bin/codecov
