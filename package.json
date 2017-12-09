@@ -2,7 +2,8 @@
   "name": "dts-only",
   "version": "0.1.0",
   "description": "Command-line wrapper for typescript compiler to produce declarations only",
-  "main": "lib/index.js",
+  "bin": "lib/index.js",
+  "main": "lib/dts-only.js",
   "scripts": {
     "build": "babel index.js --out-dir dist",
     "test": "npm run test:single -- --watchAll",
