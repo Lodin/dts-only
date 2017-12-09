@@ -9,4 +9,4 @@ cache:
   - $HOME/.npm
 script: npm run test:cover -- --timeout 15000
 after_success:
-  - cat coverage/lcov/lcov.info | ./node_modules/.bin/codecov
+  - cat coverage/lcov.info | ./node_modules/.bin/codecov
