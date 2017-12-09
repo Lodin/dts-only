@@ -6,6 +6,7 @@
   "main": "lib/dts-only.js",
   "scripts": {
     "build": "babel index.js --out-dir dist",
+    "codecov": "codecov",
     "test": "npm run test:single -- --watchAll",
     "test:single": "jest -c jest.config.js",
     "test:cover": "npm run test:single -- --coverage"
