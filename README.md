@@ -10,6 +10,17 @@ because it does not support generating declarations.
 $ npm install dts-only
 ```
 
+## Usage
+Just run script in command line:
+```bash
+$ dts-only
+```
+Script will try to find `tsconfig.json` at your cwd. If you have configuration in another directory,
+specify it with `-p`:
+```bash
+$ dts-only -p src/tsconfig.json
+```
+
 ## Command-line options
 * `-c`, `--compiler` - prints current compiler version
 * `-h`, `--help` - prints usage information
