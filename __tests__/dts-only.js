@@ -1,7 +1,7 @@
 var fs = require('fs');
 var path = require('path');
+var rimrafSync = require('rimraf').sync;
 var programm = require('../lib/dts-only');
-var parallel = require('../lib/parallel');
 
 var eol = /\r?\n?/g;
 
@@ -9,158 +9,66 @@ function r(way) {
   return path.resolve(__dirname, way);
 }
 
+function getOpts(type) {
+  var sample = path.join('__tests__/sample', type);
+
+  return {
+    project: path.join(sample, 'tsconfig.json'),
+    outDir: path.join('__tests__/compiled', type)
+  }
+}
+
 describe('dts-only', function () {
   var code1;
   var code2;
 
-  beforeAll(function (done) {
-    parallel([
-      function (check) {
-        fs.readFile(r('fixtures/code1.d.ts'), 'utf8', function (err, source) {
-          if (err) throw err;
-          code1 = source.replace(eol, '');
+  beforeAll(function () {
+    var source1 = fs.readFileSync(r('fixtures/code1.d.ts'), 'utf8');
+    var source2 = fs.readFileSync(r('fixtures/code2.d.ts'), 'utf8');
 
-          check();
-        });
-      },
-      function (check) {
-        fs.readFile(r('fixtures/code2.d.ts'), 'utf8', function (err, source) {
-          if (err) throw err;
-          code2 = source.replace(eol, '');
-
-          check();
-        });
-      }
-    ], function() {
-      done();
-    })
+    code1 = source1.replace(eol, '');
+    code2 = source2.replace(eol, '');
   });
 
-  it('should compile only d.ts files from typescript source', function (done) {
-    programm({
-      project: '__tests__/sample/default/tsconfig.json',
-      outDir: '__tests__/compiled/default'
-    }, function () {
-      fs.readFile(r('compiled/default/code1.d.ts'), 'utf8', function (err, source) {
-        if (err) {
-          throw err;
-        }
-
-        expect(source.replace(eol, '')).toEqual(code1);
-        done();
-      });
-    });
+  afterAll(function () {
+    rimrafSync(r('compiled'));
   });
 
-  it('should compile multiple d.ts mentioned in tsconfig "include" section', function (done) {
-    programm({
-      project: '__tests__/sample/multiple-include/tsconfig.json',
-      outDir: '__tests__/compiled/multiple-include'
-    }, function () {
-      parallel([
-        function (check) {
-          fs.readFile(r('compiled/multiple-include/code1.d.ts'), 'utf8', function (err, source) {
-            if (err) throw err;
-            expect(source.replace(eol, '')).toEqual(code1);
+  it('should compile only d.ts files from typescript source', function () {
+    programm(getOpts('default'));
 
-            check();
-          });
-        },
-        function (check) {
-          fs.readFile(r('compiled/multiple-include/code2.d.ts'), 'utf8', function (err, source) {
-            if (err) throw err;
-            expect(source.replace(eol, '')).toEqual(code2);
+    var source1 = fs.readFileSync(r('compiled/default/code1.d.ts'), 'utf8');
 
-            check();
-          });
-        }
-      ], function () {
-        done();
-      });
-    });
+    expect(source1.replace(eol, '')).toEqual(code1);
   });
 
-  it('should exclude paths from sending to compile basing on tsconfig "exclude" section', function (done) {
-    programm({
-      project: '__tests__/sample/exclude/tsconfig.json',
-      outDir: '__tests__/compiled/exclude'
-    }, function () {
-      parallel([
-        function (check) {
-          fs.readFile(r('compiled/exclude/code2.d.ts'), 'utf8', function (err, source) {
-            if (err) throw err;
-            expect(source.replace(eol, '')).toEqual(code2);
+  it('should compile multiple d.ts mentioned in tsconfig "include" section', function () {
+    programm(getOpts('multiple-include'));
 
-            check();
-          });
-        },
-        function (check) {
-          fs.exists(r('compiled/exclude/excludes/code1.d.ts'), function (err, result) {
-            if (err) throw err;
-            expect(result).not.toBeTruthy();
+    var source1 = fs.readFileSync(r('compiled/multiple-include/1/code1.d.ts'), 'utf8');
+    var source2 = fs.readFileSync(r('compiled/multiple-include/2/code2.d.ts'), 'utf8');
 
-            check();
-          });
-        }
-      ], function () {
-        done();
-      });
-    });
+    expect(source1.replace(eol, '')).toEqual(code1);
+    expect(source2.replace(eol, '')).toEqual(code2);
   });
 
-  it('should compile files defined in tsconfig "files" section', function (done) {
-    programm({
-      project: '__tests__/sample/files/tsconfig.json',
-      outDir: '__tests__/compiled/files'
-    }, function () {
-      parallel([
-        function (check) {
-          fs.readFile(r('compiled/files/code1.d.ts'), 'utf8', function (err, source) {
-            if (err) throw err;
-            expect(source.replace(eol, '')).toEqual(code1);
+  it('should exclude paths from sending to compile basing on tsconfig "exclude" section', function () {
+    programm(getOpts('exclude'));
 
-            check();
-          });
-        },
-        function (check) {
-          fs.exists(r('compiled/files/code2.d.ts'), function (err, result) {
-            expect(result).not.toBeTruthy();
+    var isSource1Exists = fs.existsSync(r('compiled/exclude/excluded/code1.d.ts'));
+    var source2 = fs.readFileSync(r('compiled/exclude/code2.d.ts'), 'utf8');
 
-            check();
-          });
-        }
-      ], function () {
-        done();
-      });
-    });
+    expect(isSource1Exists).not.toBeTruthy();
+    expect(source2.replace(eol, '')).toEqual(code2);
   });
 
-  it('should compile every ts or tsx file in cwd if no "include" or "files" is specified', function (done) {
-    programm({
-      project: '__tests__/sample/no-include-or-files/tsconfig.json',
-      outDir: '__tests__/compiled/no-include-or-files'
-    }, function () {
-      parallel([
-        function (check) {
-          fs.readFile(r('compiled/no-include-or-files/code1.d.ts'), 'utf8', function (err, source) {
-            if (err) throw err;
-            expect(source.replace(eol, ''))
-              .toEqual(code1);
+  it('should compile files defined in tsconfig "files" section', function () {
+    programm(getOpts('files'));
 
-            check();
-          });
-        },
-        function (check) {
-          fs.readFile(r('compiled/no-include-or-files/src/code2.d.ts'), 'utf8', function (err, source) {
-            if (err) throw err;
-            expect(source.replace(eol, '')).toEqual(code2);
+    var source1 = fs.readFileSync(r('compiled/files/code1.d.ts'), 'utf8');
+    var source2 = fs.readFileSync(r('compiled/files/code2.d.ts'), 'utf8');
 
-            check();
-          });
-        }
-      ], function () {
-        done();
-      });
-    });
+    expect(source1.replace(eol, '')).toEqual(code1);
+    expect(source2.replace(eol, '')).toEqual(code2);
   });
 });

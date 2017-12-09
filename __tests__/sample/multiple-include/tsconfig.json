@@ -8,6 +8,7 @@
       "es2017"
     ],
     "module": "esnext",
+    "moduleResolution": "node",
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true,
     "noUnusedLocals": true,
@@ -21,8 +22,8 @@
     ]
   },
   "include": [
-    "src/code1.ts",
-    "src/code2.ts"
+    "src/1/**/*.ts",
+    "src/2/**/*.ts"
   ],
   "exclude": [
     "node_modules"
