@@ -27,11 +27,11 @@
   },
   "homepage": "https://github.com/Lodin/dts-only#readme",
   "dependencies": {
-    "glob": "^7.1.2",
     "minimist": "^1.2.0",
     "typescript": "^2.6.2"
   },
   "devDependencies": {
-    "jest": "^21.2.1"
+    "jest": "^21.2.1",
+    "rimraf": "^2.6.2"
   }
 }
