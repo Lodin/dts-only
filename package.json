@@ -1,6 +1,6 @@
 {
   "name": "dts-only",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Command-line wrapper for typescript compiler to produce declarations only",
   "bin": "lib/index.js",
   "main": "lib/dts-only.js",
